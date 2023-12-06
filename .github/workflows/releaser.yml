@@ -1,0 +1,75 @@
+name: releaser
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+alpha[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+beta[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - msystem: CLANG32
+            arch: clang-i686
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{ matrix.msystem }}
+          install: >-
+            git
+            mingw-w64-${{ matrix.arch }}-clang
+            mingw-w64-${{ matrix.arch }}-cmake
+            mingw-w64-${{ matrix.arch }}-compiler-rt
+            mingw-w64-${{ matrix.arch }}-lld
+            mingw-w64-${{ matrix.arch }}-lua51
+            mingw-w64-${{ matrix.arch }}-ninja
+            mingw-w64-${{ matrix.arch }}-tools
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          mkdir build
+          cd build
+          rm -f CmakeCache.txt && cmake -S .. -B release --preset release -DFORMAT_SOURCES=ON && \
+          cmake --build release && ctest --test-dir release/src/c --output-on-failure --output-junit testlog.xml
+      - name: Upload binaries
+        uses: actions/upload-artifact@v3
+        with:
+          name: bin
+          path: |
+            build/release/bin/**/*
+  create-release:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the version
+        id: get_version
+        run: echo "tag=${GITHUB_REF/refs\/tags\//}" >> $GITHUB_OUTPUT
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+      - name: Zip
+        run: |
+          mkdir -p release && cd bin && zip -r ../release/extram2_${{ steps.get_version.outputs.tag }}.zip * && cd ..
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.tag }}
+          draft: true
+          prerelease: false
+          files: release/*
+          body: |
+            ### ダウンロード
+            
+            - [extram2_${{ steps.get_version.outputs.tag }}.zip](https://github.com/oov/aviutl_extram2/releases/download/${{ steps.get_version.outputs.tag }}/extram2_${{ steps.get_version.outputs.tag }}.zip)
+            
+            ### 変更点
+            
+            - ＊＊＊＊

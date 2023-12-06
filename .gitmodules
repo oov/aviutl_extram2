@@ -1,0 +1,3 @@
+[submodule "src/3rd/hashmap.c"]
+	path = src/c/3rd/hashmap.c
+	url = https://github.com/oov/hashmap.c

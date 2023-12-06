@@ -1,0 +1,11 @@
+-- Cache2 @GIT_TAG@ ( @GIT_REVISION@ ) by oov
+
+@キャッシュエフェクト2上
+--track0:モード,-1,1,0,1
+require("Cache2").effect_before(obj.track0)
+
+@キャッシュエフェクト2下
+require("Cache2").effect_after()
+
+@キャッシュテキスト2
+require("Cache2").text_after()
