@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - msystem: CLANG32
-            arch: clang-i686
+          - msystem: CLANG64
+            arch: clang-x86_64
     steps:
       - uses: actions/checkout@v3
         with:
@@ -39,6 +39,8 @@ jobs:
           cd build
           rm -f CmakeCache.txt && cmake -S .. -B release --preset release -DFORMAT_SOURCES=ON && \
           cmake --build release && ctest --test-dir release/src/c --output-on-failure --output-junit testlog.xml
+          cp -r ../src/exa/CacheText2.exa release/bin/キャッシュテキスト2.exa
+          ls -la release/bin
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
