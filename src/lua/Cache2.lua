@@ -322,7 +322,6 @@ local function delete_unused(table, now, lifetime, remover)
       if c.d == 0 then
         c.d = 1 -- íœ‘ÎÛ‚Æ‚µ‚Äƒ}[ƒN
       else
-        debug_print("deleting: "..key)
         remover(key) -- ÀÛ‚Éíœ
       end
     end
