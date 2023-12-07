@@ -1,5 +1,5 @@
 README.md      text eol=crlf
-*.anm          text eol=crlf working-tree-encoding=cp932
-*.exa          text eol=crlf working-tree-encoding=cp932
-*.lua          text eol=crlf working-tree-encoding=cp932
-*.obj          text eol=crlf working-tree-encoding=cp932
+*.anm          text eol=crlf encoding=cp932
+*.exa          text eol=crlf encoding=cp932
+*.lua          text eol=crlf encoding=cp932
+*.obj          text eol=crlf encoding=cp932
