@@ -44,3 +44,11 @@ target_sources(exe PRIVATE
   main.c
 )
 target_link_libraries(exe PRIVATE extram_intf kvs)
+
+find_program(LUA51DLL lua51.dll CMAKE_FIND_ROOT_PATH_BOTH)
+add_library(dll SHARED)
+set_target_properties(dll PROPERTIES PREFIX "" OUTPUT_NAME "Intram2" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/script")
+target_sources(dll PRIVATE
+  lua.c
+)
+target_link_libraries(dll PRIVATE extram_intf kvs ${LUA51DLL})

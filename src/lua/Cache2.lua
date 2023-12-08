@@ -2,7 +2,11 @@
 
 local P = {}
 
+local Intram2 = require('Intram2')
 local Extram2 = require('Extram2')
+local bridge = require("bridge")
+
+local g_target = nil
 
 ------------------------------------------------------------
 -- キャッシュエフェクト
@@ -12,26 +16,31 @@ local g_effects = {}
 local g_effect = nil
 
 local function delete_effect(key)
-  Extram2.del(key)
+  -- 1文字目は cachepos
+  local target = key:sub(1,1) == "0" and Intram2 or Extram2
+  target:del(key)
   g_effects[key] = nil
 end
 
 local function get_hash_key()
   local userdata, width, height = obj.getpixeldata()
-  return width .. "-" .. height .. "-" .. Extram2.calc_hash(userdata, width, height)
+  return width .. "-" .. height .. "-" .. bridge.calc_hash(userdata, width, height)
 end
 
 --- キャッシュエフェクトの始点
--- モードに使用可能なのは以下の値
--- -1 キャッシュ完全無効
---  0 編集中のみキャッシュ無効
---  1 キャッシュ完全有効
--- @param string name キャッシュ名
 -- @param number mode モード
-function P.effect_before(mode)
+--             -1 = 常に最新データを使う
+--              0 = オブジェクト編集中以外はキャッシュを使う
+--              1 = 常にキャッシュを使う
+-- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
+--              0 - キャッシュをプロセス内に保存する
+--              1 - キャッシュを外部プロセスに保存する
+function P.effect_before(mode, save_to_extram2)
+  g_target = save_to_extram2 == 1 and Extram2 or Intram2
   P.gc()
 
-  local key = "CacheEffect:" .. obj.layer.."-"..obj.index.."-"..obj.num .. "-" .. get_hash_key()
+  local cachepos = g_target == Intram2 and "0" or "1";
+  local key = cachepos .. "CacheEffect:" .. obj.layer.."-"..obj.index.."-"..obj.num .. "-" .. get_hash_key()
   local m = g_effects[key]
   if m == nil then
     -- キャッシュ済みのデータがなかった
@@ -50,9 +59,9 @@ function P.effect_before(mode)
     }
     return
   end
-  local width, height = Extram2.get_size(key)
+  local width, height = g_target:get_size(key)
   if width == nil then
-    -- キャッシュデータがあるはずだったが、Extram2.exe 側にデータがなかった
+    -- キャッシュデータがあるはずがなかった
     delete_effect(key)
     g_effect = {
       key = key,
@@ -80,7 +89,7 @@ function P.effect_after()
   if g_effect.width == nil then
     -- キャッシュ済みデータがなかったので通常通り描画された
     -- 今の状態をキャッシュとして控えておき次回に備える
-    local width = Extram2.set(g_effect.key)
+    local width = g_target:set(g_effect.key)
     if width == nil then
       g_effect = nil
       error("画像の保存に失敗しました")
@@ -109,7 +118,7 @@ function P.effect_after()
   obj.setoption("drawtarget", "tempbuffer", g_effect.width, g_effect.height)
   obj.load("tempbuffer")
   local p, w, h = obj.getpixeldata()
-  if not Extram2.get_direct(g_effect.key, p, w, h) then
+  if not g_target:get_direct(g_effect.key, p, w, h) then
     delete_effect(g_effect.key)
     g_effect = nil
     error("画像の読み込みに失敗しました")
@@ -151,7 +160,9 @@ local g_texts = {}
 local function delete_text(key)
   if g_texts[key] ~= nil then
     for i = 0, g_texts[key].num do
-      Extram2.del(key .. "-" .. i)
+      -- 1文字目は cachepos
+      local target = key:sub(1,1) == "0" and Intram2 or Extram2
+      target:del(key .. "-" .. i)
     end
   end
   g_texts[key] = nil
@@ -168,7 +179,12 @@ local g_msg = nil
 --             -1 = 常に最新データを使う
 --              0 = オブジェクト編集中以外はキャッシュを使う
 --              1 = 常にキャッシュを使う
-function P.text_before(message, mode, unescape)
+-- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
+--              0 - キャッシュをプロセス内に保存する
+--              1 - キャッシュを外部プロセスに保存する
+-- @param boolean unescape エスケープ処理を解除するかどうか
+function P.text_before(message, mode, save_to_extram2, unescape)
+  g_target = save_to_extram2 == 1 and Extram2 or Intram2
   P.gc()
 
   if unescape then
@@ -178,7 +194,8 @@ function P.text_before(message, mode, unescape)
   end
   g_msg = message
   g_beforekey = nil
-  g_key = "CacheText:" .. obj.layer
+  local cachepos = g_target == Intram2 and "0" or "1";
+  g_key = cachepos .. "CacheText:" .. obj.layer
   local tex = g_texts[g_key]
   if tex ~= nil then
     if (tex.msg ~= g_msg) or
@@ -217,7 +234,7 @@ local function store_text(key)
     return
   end
   -- 画像データがありそうならキャッシュに書き込む
-  local w, h = Extram2.set(key .. "-" .. obj.index)
+  local w, h = g_target:set(key .. "-" .. obj.index)
   c.img[obj.index] = {
     w = w,
     h = h,
@@ -266,7 +283,7 @@ local function load_text(key)
   end
   obj.setoption("drawtarget", "tempbuffer", cimg.w, cimg.h)
   obj.load("tempbuffer")
-  if not Extram2.get(key .. "-" .. obj.index) then
+  if not g_target:get(key .. "-" .. obj.index) then
     -- キャッシュからの読み込みに失敗した場合は諦める（手動で消された場合など）
     -- データに不整合が起きているので一旦すべて仕切り直す
     delete_text(key)

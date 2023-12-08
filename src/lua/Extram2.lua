@@ -17,26 +17,17 @@ local function parse_size(s)
   return tonumber(s:sub(1, p-1)), tonumber(s:sub(p+1))
 end
 
---- 画像からハッシュ値を計算する
--- @param userdata pixels ピクセルデータ
--- @param number width ピクセルデータの幅
--- @param number height ピクセルデータの高さ
--- @return string 計算されたハッシュ値
-function P.calc_hash(pixels, width, height)
-  return bridge.calc_hash(pixels, width, height)
-end
-
 --- 保存したテキストや画像を削除する
 -- @param string key 保存名
 -- @return string 成功したかどうか
-function P.del(key)
+function P:del(key)
   return call("del\0" .. key) == "1"
 end
 
 --- 保存されたテキストを読み込む
 -- @param string key 保存名
 -- @return string 成功したかどうか
-function P.get_str(key)
+function P:get_str(key)
   local r = call("get_str\0" .. key)
   if r:sub(1,1) == "1" then
     return r:sub(2)
@@ -50,7 +41,7 @@ end
 -- @param string key 保存名
 -- @param string value 保存内容
 -- @return boolean 成功したかどうか
-function P.set_str(key, value)
+function P:set_str(key, value)
   return call("set_str\0" .. key .. "\0" .. value) == "1"
 end
 
@@ -58,7 +49,7 @@ end
 -- @param string key 保存名
 -- @return number, number 保存した画像の幅と高さ
 -- @return nil, nil 失敗したとき
-function P.get_size(key)
+function P:get_size(key)
   local r = call("get_size\0" .. key)
   if r:sub(1,1) == "1" then
     return parse_size(r:sub(2))
@@ -70,15 +61,15 @@ end
 -- 保存されているサイズが事前にわかっている場合は get_direct の方が速い
 -- @param string key 保存名
 -- @return boolean 成功したかどうか
-function P.get(key)
-  local w, h = P.get_size(key)
+function P:get(key)
+  local w, h = self:get_size(key)
   if w == nil or h == nil then
     return false
   end
   obj.setoption("drawtarget", "tempbuffer", w, h)
   obj.load("tempbuffer")
   local pixels, width, height = obj.getpixeldata()
-  if not P.get_direct(key, pixels, width, height) then
+  if not self:get_direct(key, pixels, width, height) then
     return false
   end
   obj.putpixeldata(pixels)
@@ -92,7 +83,7 @@ end
 -- @param number width ピクセルデータの幅
 -- @param number height ピクセルデータの高さ
 -- @return boolean 成功したかどうか
-function P.get_direct(key, pixels, width, height)
+function P:get_direct(key, pixels, width, height)
   return call("get\0" .. key, "wp", pixels, width, height) == "1"
 end
 
@@ -100,8 +91,8 @@ end
 -- @param string key 保存名
 -- @return number, number 保存した画像の幅と高さ
 -- @return nil, nil 失敗したとき
-function P.set(key)
-  return P.set_direct(key, obj.getpixeldata())
+function P:set(key)
+  return self:set_direct(key, obj.getpixeldata())
 end
 
 --- key に画像データを保存する
@@ -112,7 +103,7 @@ end
 -- @param number height ピクセルデータの高さ
 -- @return number, number 保存した画像の幅と高さ
 -- @return nil, nil 失敗したとき
-function P.set_direct(key, pixels, width, height)
+function P:set_direct(key, pixels, width, height)
   local r = call("set\0" .. key, "rp", pixels, width, height)
   if r:sub(1,1) == "1" then
     return parse_size(r:sub(2))

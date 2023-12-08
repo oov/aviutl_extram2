@@ -14,6 +14,8 @@ jobs:
     strategy:
       matrix:
         include:
+          - msystem: CLANG32
+            arch: clang-i686
           - msystem: CLANG64
             arch: clang-x86_64
     steps:
@@ -44,7 +46,7 @@ jobs:
       - name: Upload binaries
         uses: actions/upload-artifact@v3
         with:
-          name: bin
+          name: bin-${{ matrix.msystem }}
           path: |
             build/release/bin/**/*
   create-release:
@@ -58,7 +60,9 @@ jobs:
         uses: actions/download-artifact@v3
       - name: Zip
         run: |
-          mkdir -p release && cd bin && zip -r ../release/extram2_${{ steps.get_version.outputs.tag }}.zip * && cd ..
+          rm bin-CLANG32/script/Extram2.exe
+          cp bin-CLANG64/script/Extram2.exe bin-CLANG32/script/Extram2.exe
+          mkdir -p release && cd bin-CLANG32 && zip -r ../release/extram2_${{ steps.get_version.outputs.tag }}.zip * && cd ..
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1

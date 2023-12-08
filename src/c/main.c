@@ -8,6 +8,8 @@
 
 // #define EXTRAM2_DEBUG
 
+static struct kvs *g_kvs = NULL;
+
 static void output(const char *const fmt, ...) {
   char buf[1024] = {0};
   va_list p;
@@ -91,12 +93,12 @@ static void close_fmo(struct fmo *const fmo) {
 }
 
 static void del(char *params, const size_t params_len) {
-  kvs_delete(params, params_len);
+  kvs_delete(g_kvs, params, params_len);
   output("1");
 }
 
 static void get_size(char *params, const size_t params_len) {
-  const struct stored_data *const sd = kvs_get(params, params_len);
+  const struct stored_data *const sd = kvs_get(g_kvs, params, params_len);
   if (!sd || sd->width == 0 || sd->height == 0 || sd->p == NULL) {
     output("0");
     return;
@@ -105,7 +107,7 @@ static void get_size(char *params, const size_t params_len) {
 }
 
 static void get(char *params, const size_t params_len) {
-  struct stored_data *sd = kvs_get(params, params_len);
+  struct stored_data *sd = kvs_get(g_kvs, params, params_len);
   if (!sd || sd->width == 0 || sd->height == 0 || sd->p == NULL) {
     output("0");
     return;
@@ -145,10 +147,13 @@ static void set(char *params, const size_t params_len) {
   }
   uint32_t const width = fmo.h->width;
   uint32_t const height = fmo.h->height;
-  bool const r =
-      kvs_set(params, params_len, width, height, GetTickCount64(), fmo.p, width * sizeof(struct pixel) * height);
+  void *ptr =
+      kvs_set(g_kvs, params, params_len, width, height, GetTickCount64(), width * sizeof(struct pixel) * height);
+  if (ptr) {
+    memcpy(ptr, fmo.p, width * sizeof(struct pixel) * height);
+  }
   close_fmo(&fmo);
-  if (!r) {
+  if (!ptr) {
     output("0");
     return;
   }
@@ -156,7 +161,7 @@ static void set(char *params, const size_t params_len) {
 }
 
 static void get_str(char *params, const size_t params_len) {
-  struct stored_data *const sd = kvs_get(params, params_len);
+  struct stored_data *const sd = kvs_get(g_kvs, params, params_len);
   if (!sd || sd->width != 0 || sd->height == 0 || sd->p == NULL) {
     output("0");
     return;
@@ -195,15 +200,19 @@ static void set_str(char *params, const size_t params_len) {
   }
   size_t const key_len = value - key - 1;
   size_t const value_len = params_len - key_len - 1;
-  bool const r = kvs_set(key, key_len, 0, value_len, GetTickCount64(), value, value_len);
-  output(r ? "1" : "0");
+  void *ptr = kvs_set(g_kvs, key, key_len, 0, value_len, GetTickCount64(), value_len);
+  if (ptr) {
+    memcpy(ptr, value, value_len);
+  }
+  output(ptr ? "1" : "0");
 }
 
 int main(void) {
   _setmode(_fileno(stdin), _O_BINARY);
   _setmode(_fileno(stdout), _O_BINARY);
 
-  if (!kvs_init(GetTickCount64())) {
+  g_kvs = kvs_init(GetTickCount64());
+  if (!g_kvs) {
 #ifdef EXTRAM2_DEBUG
     OutputDebugStringA("failed to initialize hashmap");
 #endif
@@ -272,6 +281,7 @@ int main(void) {
     output("");
   }
 
-  kvs_destroy();
+  kvs_destroy(g_kvs);
+  g_kvs = NULL;
   return 0;
 }
