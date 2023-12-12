@@ -4,7 +4,7 @@
 #include <string.h>
 
 int main(void) {
-  struct kvs *kvs = kvs_init(1234);
+  struct kvs *kvs = kvs_init(1234, 2345);
   if (!kvs) {
     printf("kvs_init failed\n");
     return 1;

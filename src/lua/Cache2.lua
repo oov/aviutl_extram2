@@ -4,7 +4,6 @@ local P = {}
 
 local Intram2 = require('Intram2')
 local Extram2 = require('Extram2')
-local bridge = require("bridge")
 
 local g_target = nil
 
@@ -24,7 +23,7 @@ end
 
 local function get_hash_key()
   local userdata, width, height = obj.getpixeldata()
-  return width .. "-" .. height .. "-" .. bridge.calc_hash(userdata, width, height)
+  return width .. "-" .. height .. "-" .. g_target.calc_hash(userdata, width, height)
 end
 
 --- キャッシュエフェクトの始点
@@ -89,12 +88,10 @@ function P.effect_after()
   if g_effect.width == nil then
     -- キャッシュ済みデータがなかったので通常通り描画された
     -- 今の状態をキャッシュとして控えておき次回に備える
-    local width = g_target:set(g_effect.key)
-    if width == nil then
-      g_effect = nil
-      error("画像の保存に失敗しました")
-    end
-    g_effects[g_effect.key] = {
+    local key = g_effect.key
+    g_effect = nil
+    g_target:set(key)
+    g_effects[key] = {
       frame = obj.frame,
       t = os.clock(),
       d = 0,
@@ -111,19 +108,14 @@ function P.effect_after()
       alpha = obj.alpha,
       aspect = obj.aspect,
     }
-    g_effect = nil
     return
   end
   -- キャッシュ済みデータがあるはずなので読み込む
-  obj.setoption("drawtarget", "tempbuffer", g_effect.width, g_effect.height)
-  obj.load("tempbuffer")
-  local p, w, h = obj.getpixeldata()
-  if not g_target:get_direct(g_effect.key, p, w, h) then
+  if not g_target:get(g_effect.key) then
     delete_effect(g_effect.key)
     g_effect = nil
     error("画像の読み込みに失敗しました")
   end
-  obj.putpixeldata(p)
   local m = g_effect.m
   m.t = os.clock()
   m.d = 0
@@ -281,8 +273,6 @@ local function load_text(key)
     end
     return
   end
-  obj.setoption("drawtarget", "tempbuffer", cimg.w, cimg.h)
-  obj.load("tempbuffer")
   if not g_target:get(key .. "-" .. obj.index) then
     -- キャッシュからの読み込みに失敗した場合は諦める（手動で消された場合など）
     -- データに不整合が起きているので一旦すべて仕切り直す
@@ -291,7 +281,6 @@ local function load_text(key)
     g_key = nil
     return
   end
-  obj.putpixeldata(data)
   obj.ox = cimg.ox
   obj.oy = cimg.oy
   obj.oz = cimg.oz

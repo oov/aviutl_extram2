@@ -10,21 +10,21 @@ struct stored_data {
   void const *key;
   size_t key_len;
 
-  int32_t width;
-  int32_t height;
+  uint32_t width;
+  uint32_t height;
   uint64_t used_at;
   void const *p;
 };
 
-struct kvs *kvs_init(uint64_t const seed);
-void kvs_destroy(struct kvs *kvs);
+struct kvs *kvs_init(uint64_t const seed0, uint64_t const seed1);
+void kvs_destroy(struct kvs *const kvs);
 
-void kvs_delete(struct kvs *kvs, char const *const key, size_t const key_len);
-void *kvs_set(struct kvs *kvs,
-              char const *const key,
+void kvs_delete(struct kvs *const kvs, void const *const key, size_t const key_len);
+void *kvs_set(struct kvs *const kvs,
+              void const *const key,
               size_t const key_len,
-              int32_t const width,
-              int32_t const height,
-              uint64_t used_at,
+              uint32_t const width,
+              uint32_t const height,
+              uint64_t const used_at,
               size_t const p_len);
-struct stored_data *kvs_get(struct kvs *kvs, const char *const key, const size_t key_len);
+struct stored_data *kvs_get(struct kvs *const kvs, void const *const key, size_t const key_len);

@@ -15,18 +15,18 @@ static void cleanup_entry(struct stored_data const *const sd) {
   }
 }
 
-void kvs_delete(struct kvs *kvs, char const *const key, size_t const key_len) {
+void kvs_delete(struct kvs *const kvs, void const *const key, size_t const key_len) {
   struct stored_data const *const sd =
       hashmap_delete(kvs->hm, &(struct stored_data const){.key = key, .key_len = key_len});
   cleanup_entry(sd);
 }
 
-void *kvs_set(struct kvs *kvs,
-              char const *const key,
+void *kvs_set(struct kvs *const kvs,
+              void const *const key,
               size_t const key_len,
-              int32_t const width,
-              int32_t const height,
-              uint64_t used_at,
+              uint32_t const width,
+              uint32_t const height,
+              uint64_t const used_at,
               size_t const p_len) {
   void *ptr = malloc(key_len + p_len + 32);
   if (!ptr) {
@@ -56,16 +56,16 @@ void *kvs_set(struct kvs *kvs,
   return ptr2;
 }
 
-struct stored_data *kvs_get(struct kvs *kvs, const char *const key, const size_t key_len) {
+struct stored_data *kvs_get(struct kvs *const kvs, void const *const key, size_t const key_len) {
   return (void *)(hashmap_get(kvs->hm, &(struct stored_data const){.key = key, .key_len = key_len}));
 }
 
-static void *my_realloc(void *ptr, size_t sz, void *udata) {
+static void *my_realloc(void *const ptr, size_t const sz, void *const udata) {
   (void)udata;
   return realloc(ptr, sz);
 }
 
-static void my_free(void *ptr, void *udata) {
+static void my_free(void *const ptr, void *const udata) {
   (void)udata;
   free(ptr);
 }
@@ -93,21 +93,13 @@ static int compare(void const *const a, void const *const b, void *const udata) 
   return 0;
 }
 
-static uint64_t next(uint64_t *const x) {
-  uint64_t z = (*x += 0x9e3779b97f4a7c15);
-  z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9;
-  z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
-  return z ^ (z >> 31);
-}
-
-struct kvs *kvs_init(uint64_t const seed) {
+struct kvs *kvs_init(uint64_t const seed0, uint64_t const seed1) {
   struct kvs *const kvs = malloc(sizeof(struct kvs));
   if (!kvs) {
     return NULL;
   }
-  uint64_t x = seed;
   kvs->hm = hashmap_new_with_allocator(
-      my_realloc, my_free, sizeof(struct stored_data), 8, next(&x), next(&x), hash, compare, NULL, NULL);
+      my_realloc, my_free, sizeof(struct stored_data), 8, seed0, seed1, hash, compare, NULL, NULL);
   if (!kvs->hm) {
     free(kvs);
     return NULL;

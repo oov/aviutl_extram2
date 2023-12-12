@@ -21,7 +21,6 @@ if ("${GIT_REVISION}" STREQUAL "")
 endif()
 message(STATUS "git revision: ${GIT_REVISION}")
 
-configure_file("Extram2.lua" "${CMAKE_BINARY_DIR}/bin/script/Extram2.lua" @ONLY NEWLINE_STYLE CRLF)
 configure_file("@Cache2.anm" "${CMAKE_BINARY_DIR}/bin/script/@Cache2.anm" @ONLY NEWLINE_STYLE CRLF)
 configure_file("Cache2.lua" "${CMAKE_BINARY_DIR}/bin/script/Cache2.lua" @ONLY NEWLINE_STYLE CRLF)
 configure_file("../../README.md" "${CMAKE_BINARY_DIR}/bin/Extram2.txt" @ONLY NEWLINE_STYLE CRLF)
