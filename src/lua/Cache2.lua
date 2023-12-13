@@ -27,6 +27,7 @@ local function get_hash_key()
 end
 
 --- キャッシュエフェクトの始点
+-- @param string hash 画像の内容を表すユニークな文字列
 -- @param number mode モード
 --             -1 = 常に最新データを使う
 --              0 = オブジェクト編集中以外はキャッシュを使う
@@ -34,12 +35,12 @@ end
 -- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
 --              0 - キャッシュをプロセス内に保存する
 --              1 - キャッシュを外部プロセスに保存する
-function P.effect_before(mode, save_to_extram2)
+function P.effect_before_custom(hash, mode, save_to_extram2)
   g_target = save_to_extram2 == 1 and Extram2 or Intram2
   P.gc()
 
   local cachepos = g_target == Intram2 and "0" or "1";
-  local key = cachepos .. "CacheEffect:" .. obj.layer.."-"..obj.index.."-"..obj.num .. "-" .. get_hash_key()
+  local key = cachepos .. "CacheEffect:" .. hash
   local m = g_effects[key]
   if m == nil then
     -- キャッシュ済みのデータがなかった
@@ -77,6 +78,18 @@ function P.effect_before(mode, save_to_extram2)
   -- 画像を 1x1 にすることで間に挟まるエフェクトの負荷を下げる
   obj.setoption("drawtarget", "tempbuffer", 1, 1)
   obj.load("tempbuffer")
+end
+
+--- キャッシュエフェクトの始点
+-- @param number mode モード
+--             -1 = 常に最新データを使う
+--              0 = オブジェクト編集中以外はキャッシュを使う
+--              1 = 常にキャッシュを使う
+-- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
+--              0 - キャッシュをプロセス内に保存する
+--              1 - キャッシュを外部プロセスに保存する
+function P.effect_before(mode, save_to_extram2)
+  return P.effect_before_custom(get_hash_key(), mode, save_to_extram2)
 end
 
 --- キャッシュエフェクトの後処理
