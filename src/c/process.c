@@ -189,6 +189,9 @@ int process_write(struct process *const self, void const *const buf, size_t cons
   if (!write(self->in_w, buf, len)) {
     return 3;
   }
+  if (!FlushFileBuffers(self->in_w)) {
+    return 1;
+  }
   return 0;
 }
 
@@ -196,10 +199,6 @@ int process_read(struct process *const self,
                  void (*recv)(void *userdata, void const *const ptr, size_t const len),
                  void *userdata) {
   mtx_lock(&self->mtx);
-  if (self->readbuf != NULL) {
-    self->readbuf = NULL;
-    cnd_signal(&self->cnd2);
-  }
   while (self->readbuf == NULL) {
     cnd_wait(&self->cnd, &self->mtx);
   }

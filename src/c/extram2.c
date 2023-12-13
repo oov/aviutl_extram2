@@ -13,6 +13,8 @@
 #include "process.h"
 #include "splitmix64.h"
 
+// #define EXTRAM2_DEBUG
+
 struct userdata {
   wchar_t fmo_name[32];
   struct process *process;
@@ -36,6 +38,17 @@ struct recv_data {
 };
 
 static HMODULE hInst = NULL;
+
+#ifdef EXTRAM2_DEBUG
+static void debug_print(char const *const filename, int const line, char const *const func, char const *const msg) {
+  char buf[1024];
+  wsprintfA(buf, "[%s:%d] %s: %s\n", filename, line, func, msg);
+  OutputDebugStringA(buf);
+}
+#  define DBGPRINT(msg) debug_print(__FILE_NAME__, __LINE__, __func__, msg)
+#else
+#  define DBGPRINT(msg)
+#endif
 
 static HANDLE create_fmo(wchar_t const *const base_name, size_t const size, wchar_t *const name32) {
   uint64_t x = GetTickCount64();
@@ -183,6 +196,7 @@ static char const *set_direct(struct userdata *ud,
                               struct pixel const *s,
                               size_t const srcw,
                               size_t const srch) {
+  DBGPRINT("request");
   struct cmd_set_req const req = {
       .id = CMD_SET,
       .key_len = key_len,
@@ -200,6 +214,7 @@ static char const *set_direct(struct userdata *ud,
   if (process_write(ud->process, ud->buf, total_len)) {
     return "cannot write to Extram2.exe";
   }
+  DBGPRINT("response");
   char const *err = NULL;
   if (process_read(ud->process,
                    recv_set,
@@ -244,6 +259,7 @@ static int luafn_del(lua_State *L) {
     return luaL_error(L, "invalid arguments");
   }
 
+  DBGPRINT("request");
   struct cmd_del_req const cmd = {
       .id = CMD_DEL,
       .key_len = key_len,
@@ -255,6 +271,7 @@ static int luafn_del(lua_State *L) {
   if (process_write(ud->process, ud->buf, total_len)) {
     return luaL_error(L, "cannot write to Extram2.exe");
   }
+  DBGPRINT("response");
   if (process_read(ud->process,
                    recv_del,
                    &(struct recv_data){
@@ -300,6 +317,7 @@ static int luafn_get_direct(lua_State *L) {
     return luaL_error(L, "invalid arguments");
   }
 
+  DBGPRINT("request");
   struct cmd_get_req const req = {
       .id = CMD_GET,
       .key_len = key_len,
@@ -311,6 +329,7 @@ static int luafn_get_direct(lua_State *L) {
   if (process_write(ud->process, ud->buf, total_len)) {
     return luaL_error(L, "cannot write to Extram2.exe");
   }
+  DBGPRINT("response");
   struct cmd_get_resp resp;
   if (process_read(ud->process,
                    recv_get,
@@ -350,6 +369,7 @@ static int luafn_get(lua_State *L) {
     return luaL_error(L, "invalid arguments");
   }
 
+  DBGPRINT("request");
   struct cmd_get_req const req = {
       .id = CMD_GET,
       .key_len = key_len,
@@ -361,6 +381,7 @@ static int luafn_get(lua_State *L) {
   if (process_write(ud->process, ud->buf, total_len)) {
     return luaL_error(L, "cannot write to Extram2.exe");
   }
+  DBGPRINT("response");
   struct cmd_get_resp resp;
   if (process_read(ud->process,
                    recv_get,
@@ -429,6 +450,17 @@ static int luafn_set_direct(lua_State *L) {
   return 0;
 }
 
+static void recv_get_size(void *const userdata, void const *const ptr, size_t const len) {
+  struct recv_data const *const rd = userdata;
+  struct cmd_get_size_resp const *const resp = ptr;
+  if (sizeof(*resp) != len) {
+    *rd->error = "invalid response size";
+    return;
+  }
+  struct cmd_get_size_resp *const r = rd->userdata;
+  *r = *resp;
+}
+
 static int luafn_get_size(lua_State *L) {
   if (lua_gettop(L) < 2) {
     return luaL_error(L, "invalid number of parameters");
@@ -446,6 +478,7 @@ static int luafn_get_size(lua_State *L) {
     return luaL_error(L, "invalid arguments");
   }
 
+  DBGPRINT("request");
   struct cmd_get_size_req const req = {
       .id = CMD_GET_SIZE,
       .key_len = key_len,
@@ -457,9 +490,10 @@ static int luafn_get_size(lua_State *L) {
   if (process_write(ud->process, ud->buf, total_len)) {
     return luaL_error(L, "cannot write to Extram2.exe");
   }
+  DBGPRINT("response");
   struct cmd_get_size_resp resp;
   if (process_read(ud->process,
-                   recv_get,
+                   recv_get_size,
                    &(struct recv_data){
                        .L = L,
                        .error = &err,
@@ -556,6 +590,7 @@ static int luafn_get_str(lua_State *L) {
     return luaL_error(L, "invalid arguments");
   }
 
+  DBGPRINT("request");
   struct cmd_get_str_req const req = {
       .id = CMD_GET_STR,
       .key_len = key_len,
@@ -567,6 +602,7 @@ static int luafn_get_str(lua_State *L) {
   if (process_write(ud->process, ud->buf, total_len)) {
     return luaL_error(L, "cannot write to Extram2.exe");
   }
+  DBGPRINT("response");
   if (process_read(ud->process,
                    recv_get_str,
                    &(struct recv_data){

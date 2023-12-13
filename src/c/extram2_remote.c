@@ -44,12 +44,21 @@ static void output(void const *const ptr, size_t const len, void const *const pt
       return;
     }
   }
-  fflush(stdout);
+  if (!FlushFileBuffers(g_stdout)) {
+#ifdef EXTRAM2_DEBUG
+    OutputDebugStringA("cannot flush output data");
+#endif
+  }
 }
 
 #ifdef EXTRAM2_DEBUG
-static void debug_print(
-    char const *const func, void const *const key, size_t const key_len, void const *const val, size_t const val_len) {
+static void debug_print(char const *const filename,
+                        int const line,
+                        char const *const func,
+                        void const *const key,
+                        size_t const key_len,
+                        void const *const val,
+                        size_t const val_len) {
   char buf[1024];
   char buf2[1024];
   char buf3[1024];
@@ -67,9 +76,12 @@ static void debug_print(
   } else {
     buf3[0] = '\0';
   }
-  wsprintfA(buf, "[%s] key: %s val: %s", func, buf2, buf3);
+  wsprintfA(buf, "[%s:%d] %s: key: %s val: %s", filename, line, func, buf2, buf3);
   OutputDebugStringA(buf);
 }
+#  define DBGPRINT(req1, len1, req2, len2) debug_print(__FILE_NAME__, __LINE__, __func__, req1, len1, req2, len2)
+#else
+#  define DBGPRINT(req1, len1, req2, len2)
 #endif
 
 struct pixel {
@@ -86,9 +98,7 @@ static void del(void *const ptr, size_t const len) {
     goto cleanup;
   }
 
-#ifdef EXTRAM2_DEBUG
-  debug_print(__func__, (void const *)(req + 1), req->key_len, NULL, 0);
-#endif
+  DBGPRINT((void const *)(req + 1), req->key_len, NULL, 0);
 
   kvs_delete(g_kvs, (void const *)(req + 1), req->key_len);
   resp.ok = true;
@@ -103,14 +113,20 @@ static void get_size(void *const ptr, size_t const len) {
     goto cleanup;
   }
 
-#ifdef EXTRAM2_DEBUG
-  debug_print(__func__, (void const *)(req + 1), req->key_len, NULL, 0);
-#endif
+  DBGPRINT((void const *)(req + 1), req->key_len, NULL, 0);
 
   struct stored_data *const sd = kvs_get(g_kvs, (void const *)(req + 1), req->key_len);
   if (!sd || sd->width == 0 || sd->height == 0 || sd->p == NULL) {
     goto cleanup;
   }
+
+#ifdef EXTRAM2_DEBUG
+  {
+    char buf[256];
+    wsprintfA(buf, "[%s:%d] %s: width: %d height: %d", __FILE_NAME__, __LINE__, __func__, sd->width, sd->height);
+    OutputDebugStringA(buf);
+  }
+#endif
 
   sd->used_at = GetTickCount64();
   resp.ok = true;
@@ -132,11 +148,11 @@ static void get(void *const ptr, size_t const len) {
     goto cleanup;
   }
 
+  DBGPRINT((void const *)(req + 1), req->key_len, NULL, 0);
 #ifdef EXTRAM2_DEBUG
-  debug_print(__func__, (void const *)(req + 1), req->key_len, NULL, 0);
   {
     char buf[256];
-    wsprintfA(buf, "[%s] width: %d height: %d", __func__, sd->width, sd->height);
+    wsprintfA(buf, "[%s:%d] %s: width: %d height: %d", __FILE_NAME__, __LINE__, __func__, sd->width, sd->height);
     OutputDebugStringA(buf);
   }
 #endif
@@ -158,11 +174,11 @@ static void set(void *const ptr, size_t const len) {
     goto cleanup;
   }
 
+  DBGPRINT((void const *)(req + 1), req->key_len, NULL, 0);
 #ifdef EXTRAM2_DEBUG
-  debug_print(__func__, (void const *)(req + 1), req->key_len, NULL, 0);
   {
     char buf[256];
-    wsprintfA(buf, "[%s] width: %d height: %d", __func__, req->width, req->height);
+    wsprintfA(buf, "[%s:%d] %s: width: %d height: %d", __FILE_NAME__, __LINE__, __func__, req->width, req->height);
     OutputDebugStringA(buf);
   }
 #endif
@@ -195,9 +211,7 @@ static void get_str(void *const ptr, size_t const len) {
     goto cleanup;
   }
 
-#ifdef EXTRAM2_DEBUG
-  debug_print(__func__, (void const *)(req + 1), req->key_len, sd->p, sd->height);
-#endif
+  DBGPRINT((void const *)(req + 1), req->key_len, sd->p, sd->height);
 
   sd->used_at = GetTickCount64();
   resp.ok = true;
@@ -227,9 +241,7 @@ static void set_str(void *const ptr, size_t const len) {
   uint8_t const *const val = s + req->key_len;
   memcpy(d, val, req->val_len);
 
-#ifdef EXTRAM2_DEBUG
-  debug_print(__func__, key, req->key_len, val, req->val_len);
-#endif
+  DBGPRINT(key, req->key_len, val, req->val_len);
 
   resp.ok = true;
 cleanup:
@@ -299,7 +311,13 @@ int main(void) {
 #ifdef EXTRAM2_DEBUG
     {
       char buf2[256];
-      wsprintfA(buf2, "%s cmdid: %d len: %d", __func__, ((struct cmd_unk_req const *)buf)->id, len);
+      wsprintfA(buf2,
+                "[%s:%d] %s cmdid: %d len: %d",
+                __FILE_NAME__,
+                __LINE__,
+                __func__,
+                ((struct cmd_unk_req const *)buf)->id,
+                len);
       OutputDebugStringA(buf2);
     }
 #endif
