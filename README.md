@@ -123,6 +123,60 @@ https://github.com/oov/aviutl_extram2/releases
 require('Cache2').effect_before_custom(hash, cache_mode, save_mode)
 ```
 
+### Extram2 と Intram2 について
+
+`Extram2` と `Intram2` は同じ機能を提供する Lua 用モジュールで、データの保存先のみが異なります。
+
+以下に実装されている機能を示します。  
+この説明には `Extram2` を用いていますが、`Intram2` でも同様です。
+
+```lua
+  local Extram2 = require('Extram2')
+
+  -- 保存されたデータを削除
+  -- 対象のデータが見つからなくても成功とみなされます
+  -- 戻り値はありません
+  Extram2:del(key)
+
+  -- 保存されていたデータを読み込む
+  -- 内部で適切なサイズのバッファーを確保し、自動的に obj.getpixeldata / obj.putpixeldata を呼び出します
+  -- 取得に成功した場合は true、失敗した場合は false を返します
+  local r = Extram2:get(key)
+
+  -- 保存されていたデータを読み込む
+  -- data, w, h には obj.getpixeldata で取得したものを渡してください
+  -- obj.putpixeldata も自動的には行われないので、必要に応じて呼び出してください
+  -- 保存されていたデータとサイズが異なる場合は失敗として扱われます
+  -- 取得に成功した場合は true、失敗した場合は false を返します
+  local r = Extram2:get_direct(key, data, w, h)
+
+  -- 保存されていたデータのサイズを取得
+  -- 取得に失敗した場合は nil, nil を返します
+  local w, h = Extram2:get_size(key)
+
+  -- 画像を保存します
+  -- 保存に成功した場合は保存した画像の幅と高さを返します
+  -- obj に画像がないとき（obj.w か obj.h が 0 の場合）はエラーになります
+  local w, h = Extram2:set(key)
+
+  -- 画像を保存します
+  -- data, w, h には obj.getpixeldata で取得したものを渡してください
+  -- 保存に成功した場合は true、失敗した場合は false を返します
+  local r = Extram2:set_direct(key, data, w, h)
+
+  -- 文字列を読み込む
+  -- データが見つからないときや保存されていたのが画像だった場合は nil を返します
+  local str = Extram2:get_str(key)
+
+  -- 文字列を保存します
+  -- 保存に成功した場合は true、失敗した場合は false を返します
+  local r = Extram2:set_str(key, str)
+
+  -- 画像の内容を元にハッシュ値を計算し、文字列で返します
+  -- data, w, h には obj.getpixeldata で取得したものを渡してください
+  local r = Extram2.calc_hash(data, w, h)
+```
+
 更新履歴
 --------
 
