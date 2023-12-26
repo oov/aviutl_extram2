@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0beta3
+
+- 最適化
+  - 0.1.0beta2 を使用している場合、`Extram2.lua` は削除してください
+- `require('Cache2').effect_before_custom` を追加
+  - それを GUI から使うための `キャッシュエフェクト2上カスタム` も追加
+
 ## 0.1.0beta2
 
 - 保存場所を選べるようにした
