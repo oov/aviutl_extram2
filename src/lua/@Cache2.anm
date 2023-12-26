@@ -2,8 +2,14 @@
 
 @キャッシュエフェクト2上
 --track0:動作モード,-1,1,0,1
---track1:保存場所,0,1,0,1
+--track1:保存場所,0,1,1,1
 require("Cache2").effect_before(obj.track0, obj.track1)
+
+@キャッシュエフェクト2上カスタム
+--track0:動作モード,-1,1,0,1
+--track1:保存場所,0,1,1,1
+--param:local h="画像の内容を表す文字列"
+require("Cache2").effect_before_custom(h, obj.track0, obj.track1)
 
 @キャッシュエフェクト2下
 require("Cache2").effect_after()
