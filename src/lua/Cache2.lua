@@ -6,6 +6,7 @@ local Intram2 = require('Intram2')
 local Extram2 = require('Extram2')
 
 local g_target = nil
+local g_use_exedit_cache = false
 
 ------------------------------------------------------------
 -- キャッシュエフェクト
@@ -28,15 +29,18 @@ end
 
 --- キャッシュエフェクトの始点
 -- @param string hash 画像の内容を表すユニークな文字列
--- @param number mode モード
+-- @param number cache_mode キャッシュモード
 --             -1 = 常に最新データを使う
 --              0 = オブジェクト編集中以外はキャッシュを使う
 --              1 = 常にキャッシュを使う
--- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
+-- @param number save_mode 保存モード
 --              0 - キャッシュをプロセス内に保存する
 --              1 - キャッシュを外部プロセスに保存する
-function P.effect_before_custom(hash, mode, save_to_extram2)
-  g_target = save_to_extram2 == 1 and Extram2 or Intram2
+--              2 - キャッシュをプロセス内に保存する + 拡張編集のキャッシュも使う
+--              3 - キャッシュを外部プロセスに保存する + 拡張編集のキャッシュも使う
+function P.effect_before_custom(hash, cache_mode, save_mode)
+  g_target = ((save_mode == 1)or(save_mode == 3)) and Extram2 or Intram2
+  g_use_exedit_cache = (save_mode == 2)or(save_mode == 3)
   P.gc()
 
   local cachepos = g_target == Intram2 and "0" or "1";
@@ -49,7 +53,7 @@ function P.effect_before_custom(hash, mode, save_to_extram2)
     }
     return
   end
-  if (mode == -1) or (mode == 0 and m.frame == obj.frame and obj.getoption("gui")) then
+  if (cache_mode == -1) or (cache_mode == 0 and m.frame == obj.frame and obj.getoption("gui")) then
     -- キャッシュを消去すべき状況だった
     -- 1. モードが -1 だった
     -- 2. モードが 0 でカーソルの位置が変わらずに再描画されていた（編集作業中と思われる）
@@ -81,15 +85,17 @@ function P.effect_before_custom(hash, mode, save_to_extram2)
 end
 
 --- キャッシュエフェクトの始点
--- @param number mode モード
+-- @param number cache_mode キャッシュモード
 --             -1 = 常に最新データを使う
 --              0 = オブジェクト編集中以外はキャッシュを使う
 --              1 = 常にキャッシュを使う
--- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
+-- @param number save_mode 保存モード
 --              0 - キャッシュをプロセス内に保存する
 --              1 - キャッシュを外部プロセスに保存する
-function P.effect_before(mode, save_to_extram2)
-  return P.effect_before_custom(get_hash_key(), mode, save_to_extram2)
+--             10 - キャッシュをプロセス内に保存する + 拡張編集のキャッシュも使う
+--             11 - キャッシュを外部プロセスに保存する + 拡張編集のキャッシュも使う
+function P.effect_before(cache_mode, save_mode)
+  return P.effect_before_custom(get_hash_key(), cache_mode, save_mode)
 end
 
 --- キャッシュエフェクトの後処理
@@ -104,6 +110,9 @@ function P.effect_after()
     local key = g_effect.key
     g_effect = nil
     g_target:set(key)
+    if g_use_exedit_cache then
+      obj.copybuffer("cache:" .. key, "obj")
+    end
     g_effects[key] = {
       frame = obj.frame,
       t = os.clock(),
@@ -124,12 +133,19 @@ function P.effect_after()
     return
   end
   -- キャッシュ済みデータがあるはずなので読み込む
-  if not g_target:get(g_effect.key) then
+  local r = false
+  if g_use_exedit_cache then
+    r = obj.copybuffer("obj", "cache:" .. g_effect.key)
+  end
+  if not r then
+    r = g_target:get(g_effect.key)
+  end
+  if not r then
     delete_effect(g_effect.key)
     g_effect = nil
     error("画像の読み込みに失敗しました")
-  end
-  local m = g_effect.m
+  end  
+local m = g_effect.m
   m.t = os.clock()
   m.d = 0
   m.frame = obj.frame
@@ -148,8 +164,8 @@ function P.effect_after()
   g_effect = nil
 end
 
-function P.effect(mode, fn)
-  P.effect_before(mode)
+function P.effect(cache_mode, fn)
+  P.effect_before(cache_mode)
   if g_effect.width == nil then
     fn()
   end
@@ -180,16 +196,19 @@ local g_msg = nil
 
 --- テキストオブジェクトが呼び出すキャッシュテキストのエントリーポイント
 -- @param string message メッセージ本文
--- @param number mode 動作モード
+-- @param number cache_mode キャッシュモード
 --             -1 = 常に最新データを使う
 --              0 = オブジェクト編集中以外はキャッシュを使う
 --              1 = 常にキャッシュを使う
--- @param number save_to_extram2 キャッシュを外部プロセスに保存するかどうか
+-- @param number save_mode 保存モード
 --              0 - キャッシュをプロセス内に保存する
 --              1 - キャッシュを外部プロセスに保存する
+--              2 - キャッシュをプロセス内に保存する + 拡張編集のキャッシュも使う
+--              3 - キャッシュを外部プロセスに保存する + 拡張編集のキャッシュも使う
 -- @param boolean unescape エスケープ処理を解除するかどうか
-function P.text_before(message, mode, save_to_extram2, unescape)
-  g_target = save_to_extram2 == 1 and Extram2 or Intram2
+function P.text_before(message, cache_mode, save_mode, unescape)
+  g_target = ((save_mode == 1)or(save_mode == 3)) and Extram2 or Intram2
+  g_use_exedit_cache = (save_mode == 2)or(save_mode == 3)
   P.gc()
 
   if unescape then
@@ -204,8 +223,8 @@ function P.text_before(message, mode, save_to_extram2, unescape)
   local tex = g_texts[g_key]
   if tex ~= nil then
     if (tex.msg ~= g_msg) or
-       (mode == -1) or
-       (mode == 0 and tex.frame == obj.frame and obj.getoption("gui")) then
+       (cache_mode == -1) or
+       (cache_mode == 0 and tex.frame == obj.frame and obj.getoption("gui")) then
       -- 編集中カーソル移動せずに再描画された（サイズを変更した場合など）か、
       -- テキスト内容が変わったか、キャッシュ無効モードならキャッシュを破棄
       delete_text(g_key)
@@ -240,6 +259,9 @@ local function store_text(key)
   end
   -- 画像データがありそうならキャッシュに書き込む
   local w, h = g_target:set(key .. "-" .. obj.index)
+  if g_use_exedit_cache then
+    obj.copybuffer("cache:" .. key .. "-" .. obj.index, "obj")
+  end
   c.img[obj.index] = {
     w = w,
     h = h,
@@ -286,7 +308,14 @@ local function load_text(key)
     end
     return
   end
-  if not g_target:get(key .. "-" .. obj.index) then
+  local r = false
+  if g_use_exedit_cache then
+    r = obj.copybuffer("obj", "cache:" .. key .. "-" .. obj.index)
+  end
+  if not r then
+    r = g_target:get(key .. "-" .. obj.index)
+  end
+  if not r then
     -- キャッシュからの読み込みに失敗した場合は諦める（手動で消された場合など）
     -- データに不整合が起きているので一旦すべて仕切り直す
     delete_text(key)
