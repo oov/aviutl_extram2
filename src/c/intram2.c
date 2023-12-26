@@ -199,7 +199,7 @@ static int luafn_get_str(lua_State *L) {
     return luaL_error(L, "invalid arguments");
   }
   struct stored_data const *const sd = kvs_get(ud->kvs, key, key_len);
-  if (!sd) {
+  if (!sd || sd->width != 0 || sd->height == 0 || sd->p == NULL) {
     lua_pushnil(L);
     return 1;
   }
