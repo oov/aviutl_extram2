@@ -84,7 +84,8 @@ static int luafn_get(lua_State *L) {
 
   struct stored_data const *const sd = kvs_get(ud->kvs, key, key_len);
   if (!sd || sd->width == 0 || sd->height == 0 || sd->p == NULL) {
-    return luaL_error(L, "data not found");
+    lua_pushboolean(L, false);
+    return 1;
   }
 
   lua_getglobal(L, "obj");
