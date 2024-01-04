@@ -92,8 +92,8 @@ end
 -- @param number save_mode 保存モード
 --              0 - キャッシュをプロセス内に保存する
 --              1 - キャッシュを外部プロセスに保存する
---             10 - キャッシュをプロセス内に保存する + 拡張編集のキャッシュも使う
---             11 - キャッシュを外部プロセスに保存する + 拡張編集のキャッシュも使う
+--              2 - キャッシュをプロセス内に保存する + 拡張編集のキャッシュも使う
+--              3 - キャッシュを外部プロセスに保存する + 拡張編集のキャッシュも使う
 function P.effect_before(cache_mode, save_mode)
   return P.effect_before_custom(get_hash_key(), cache_mode, save_mode)
 end
