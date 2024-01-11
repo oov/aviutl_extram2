@@ -1,4 +1,4 @@
-name: releaser
+name: test-build
 
 on:
   pull_request:
