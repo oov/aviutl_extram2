@@ -1,5 +1,5 @@
-#include <lua5.1/lauxlib.h>
-#include <lua5.1/lua.h>
+#include <lauxlib.h>
+#include <lua.h>
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>

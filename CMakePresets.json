@@ -7,14 +7,13 @@
   },
   "configurePresets": [
     {
-      "name": "debug",
+      "name": "default",
       "displayName": "Debug build",
       "description": "Debug build using Ninja generator",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_C_STANDARD": "11",
         "CMAKE_C_STANDARD_REQUIRED": "ON",
         "CMAKE_C_EXTENSIONS": "OFF",
@@ -22,16 +21,6 @@
         "FORMAT_SOURCES": "OFF"
       },
       "environment": {}
-    },
-    {
-      "name": "release",
-      "inherits": "debug",
-      "displayName": "Release build",
-      "description": "Release build using Ninja generator",
-      "binaryDir": "${sourceDir}/build/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
     }
   ]
 }

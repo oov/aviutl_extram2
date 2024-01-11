@@ -10,8 +10,37 @@ if(FORMAT_SOURCES)
   )
 endif()
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(LUA51_PLATFORM x86_64)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 4)
+  set(LUA51_PLATFORM i686)
+else()
+  message(FATAL_ERROR "failed to detect environment")
+endif()
+
+set(LUA51_URL "https://github.com/oov/lua-5.1.5/releases/download/v5.1.5/lua_v5.1.5_${LUA51_PLATFORM}.zip")
+string(REGEX MATCH "[^/]+$" LUA51_ARCHIVE_NAME "${LUA51_URL}")
+set(LUA51_ARCHIVE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${LUA51_ARCHIVE_NAME}")
+set(LUA51_DIR "${CMAKE_CURRENT_BINARY_DIR}/lua51")
+set(LUA51_DLL "${LUA51_DIR}/bin/lua51.dll")
+set(LUA51_INCLUDE "${LUA51_DIR}/include")
+if(NOT EXISTS "${LUA51_DIR}")
+  if(NOT EXISTS "${LUA51_ARCHIVE_PATH}")
+    file(DOWNLOAD "${LUA51_URL}" "${LUA51_ARCHIVE_PATH}")
+  endif()
+  string(REGEX REPLACE "\\.[^.]+$" "" LUA51_ARCHIVE_NOEXT "${LUA51_ARCHIVE_NAME}")
+  file(MAKE_DIRECTORY "${LUA51_DIR}")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E tar xf ${LUA51_ARCHIVE_PATH}
+    WORKING_DIRECTORY "${LUA51_DIR}"
+  )
+endif()
+
 add_library(extram_intf INTERFACE)
-target_include_directories(extram_intf INTERFACE 3rd/hashmap.c)
+target_include_directories(extram_intf INTERFACE
+  3rd/hashmap.c
+  ${LUA51_INCLUDE}
+)
 target_compile_definitions(extram_intf INTERFACE
   _WIN32_WINNT=0x0601
   $<$<CONFIG:Release>:NDEBUG=1>
@@ -37,7 +66,7 @@ add_library(tinycthread STATIC
 target_include_directories(tinycthread INTERFACE
   3rd/tinycthread/source
 )
-target_link_libraries(tinycthread PRIVATE extram_intf)
+target_link_libraries(tinycthread PRIVATE extram_intf ${LUA51_DLL})
 target_compile_options(tinycthread PRIVATE
   -Wno-reserved-macro-identifier
   -Wno-reserved-identifier
@@ -53,15 +82,13 @@ add_executable(test_kvs test_kvs.c)
 target_link_libraries(test_kvs PRIVATE extram_intf kvs)
 add_test(NAME test_kvs COMMAND test_kvs)
 
-find_program(LUA51DLL lua51.dll CMAKE_FIND_ROOT_PATH_BOTH)
-
 add_library(intram2 SHARED)
 set_target_properties(intram2 PROPERTIES PREFIX "" OUTPUT_NAME "Intram2" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/script")
 target_sources(intram2 PRIVATE
   intram2.c
   hash.c
 )
-target_link_libraries(intram2 PRIVATE extram_intf kvs ${LUA51DLL})
+target_link_libraries(intram2 PRIVATE extram_intf kvs ${LUA51_DLL})
 
 add_library(extram2 SHARED)
 set_target_properties(extram2 PROPERTIES PREFIX "" OUTPUT_NAME "Extram2" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/script")
@@ -70,7 +97,7 @@ target_sources(extram2 PRIVATE
   hash.c
   process.c
 )
-target_link_libraries(extram2 PRIVATE extram_intf tinycthread ${LUA51DLL})
+target_link_libraries(extram2 PRIVATE extram_intf tinycthread)
 
 add_executable(extram2_remote)
 set_target_properties(extram2_remote PROPERTIES OUTPUT_NAME "Extram2" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/script")
