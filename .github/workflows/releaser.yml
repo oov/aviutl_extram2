@@ -21,13 +21,8 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          bash -x build.bash
-      - name: Zip
-        shell: bash
-        run: |
-          mkdir -p release
-          cd build/Release/bin
-          zip -r ../../../release/extram2_${{ steps.get_version.outputs.tag }}.zip * && cd ..
+          bash -x build.bash -z
+          mv build/Release/dist/Release.zip build/Release/dist/extram2_${{ steps.get_version.outputs.tag }}.zip
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
@@ -35,7 +30,7 @@ jobs:
           tag_name: ${{ steps.get_version.outputs.tag }}
           draft: true
           prerelease: false
-          files: release/*
+          files: build/Release/dist/*
           body: |
             ### ダウンロード
             

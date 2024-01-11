@@ -72,6 +72,7 @@ NINJA_VERSION="1.11.1"
 LLVM_MINGW_VERSION="20231128"
 
 REBUILD=1
+CREATE_ZIP=0
 CMAKE_BUILD_TYPE=Release
 
 while [[ $# -gt 0 ]]; do
@@ -82,6 +83,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -q|--quick)
       REBUILD=0
+      shift
+      ;;
+    -z|--zip)
+      CREATE_ZIP=1
       shift
       ;;
     -*|--*)
@@ -116,17 +121,17 @@ esac
 mkdir -p build/tools
 cd build/tools
 
-download_cmake ${CMAKE_URL} "cmake-${platform}"
+download_cmake ${CMAKE_URL} "${PWD}/cmake-${platform}"
 export PATH=$PWD/cmake-${platform}/bin:$PATH
-download_ninja ${NINJA_URL} "ninja-${platform}"
+download_ninja ${NINJA_URL} "${PWD}/ninja-${platform}"
 export PATH=$PWD/ninja-${platform}:$PATH
-download_llvm_mingw ${LLVM_MINGW_URL} "llvm-mingw-${platform}"
+download_llvm_mingw ${LLVM_MINGW_URL} "${PWD}/llvm-mingw-${platform}"
 export PATH=$PWD/llvm-mingw-${platform}/bin:$PATH
 
 cd ..
 
 for arch in i686 x86_64; do
-  destdir="${CMAKE_BUILD_TYPE}/${arch}"
+  destdir="${PWD}/${CMAKE_BUILD_TYPE}/${arch}"
   if [ "${REBUILD}" -eq 1 ]; then
     rm -rf "${destdir}"
     cmake -S .. -B "${destdir}" --preset default \
@@ -139,10 +144,18 @@ for arch in i686 x86_64; do
   ctest --test-dir "${destdir}/src/c" --output-on-failure --output-junit testlog.xml
 done
 
-destdir="${CMAKE_BUILD_TYPE}"
+destdir="${PWD}/${CMAKE_BUILD_TYPE}"
 if [ "${REBUILD}" -eq 1 ]; then
   rm -rf "${destdir}/bin"
 fi
 mkdir -p "${destdir}/bin"
 cp -r "${destdir}/i686/bin/"* "${destdir}/bin"
 cp -r "${destdir}/x86_64/bin/script/Extram2.exe" "${destdir}/bin/script"
+
+if [ "${CREATE_ZIP}" -eq 1 ]; then
+  rm -rf "${destdir}/dist"
+  mkdir -p "${destdir}/dist"
+  cd "${destdir}/bin"
+  cmake -E tar cf "${destdir}/dist/${CMAKE_BUILD_TYPE}.zip" --format=zip .
+  cd ../..
+fi
