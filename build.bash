@@ -72,6 +72,7 @@ NINJA_VERSION="1.11.1"
 LLVM_MINGW_VERSION="20231128"
 
 REBUILD=1
+SKIP_TESTS=0
 CREATE_ZIP=0
 CMAKE_BUILD_TYPE=Release
 
@@ -83,6 +84,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     -q|--quick)
       REBUILD=0
+      shift
+      ;;
+    -s|--skip-tests)
+      SKIP_TESTS=1
       shift
       ;;
     -z|--zip)
@@ -141,7 +146,9 @@ for arch in i686 x86_64; do
       -DCMAKE_C_COMPILER="${arch}-w64-mingw32-clang"
   fi
   cmake --build "${destdir}"
-  ctest --test-dir "${destdir}/src/c" --output-on-failure --output-junit testlog.xml
+  if [ "${SKIP_TESTS}" -eq 0 ]; then
+    ctest --test-dir "${destdir}/src/c" --output-on-failure --output-junit testlog.xml
+  fi
 done
 
 destdir="${PWD}/${CMAKE_BUILD_TYPE}"
