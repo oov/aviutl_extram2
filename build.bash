@@ -7,7 +7,9 @@ cd "$(dirname "${BASH_SOURCE:-$0}")"
 mkdir -p build/tools
 cd build/tools
 
-curl -OL https://raw.githubusercontent.com/oov/ovbase/main/setup-llvm-mingw.bash
+if [ ! -e "setup-llvm-mingw.bash" ]; then
+  curl -OL https://raw.githubusercontent.com/oov/ovbase/main/setup-llvm-mingw.bash
+fi
 . setup-llvm-mingw.bash --dir $PWD
 
 cd ..
