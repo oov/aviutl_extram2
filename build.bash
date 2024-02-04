@@ -8,13 +8,13 @@ mkdir -p build/tools
 cd build/tools
 
 if [ ! -e "setup-llvm-mingw.bash" ]; then
-  curl -sOL https://raw.githubusercontent.com/oov/ovbase/60418da401e611f977394bd36de68886415cd6a0/setup-llvm-mingw.bash
+  curl -sOL https://raw.githubusercontent.com/oov/ovbase/471d0270eb097a62b6f5edb88cec74164d9ca224/setup-llvm-mingw.bash
 fi
 . setup-llvm-mingw.bash --dir $PWD
 
 cd ..
 
-REBUILD=1
+REBUILD=0
 SKIP_TESTS=0
 CREATE_ZIP=0
 CMAKE_BUILD_TYPE=Release
@@ -25,8 +25,8 @@ while [[ $# -gt 0 ]]; do
       CMAKE_BUILD_TYPE=Debug
       shift
       ;;
-    -q|--quick)
-      REBUILD=0
+    -r|--rebuild)
+      REBUILD=1
       shift
       ;;
     -s|--skip-tests)
@@ -49,7 +49,7 @@ done
 
 for arch in i686 x86_64; do
   destdir="${PWD}/${CMAKE_BUILD_TYPE}/${arch}"
-  if [ "${REBUILD}" -eq 1 ]; then
+  if [ "${REBUILD}" -eq 1 ] || [ ! -e "${destdir}/CMakeCache.txt" ]; then
     rm -rf "${destdir}"
     cmake -S .. -B "${destdir}" --preset default \
       -DFORMAT_SOURCES=ON \
